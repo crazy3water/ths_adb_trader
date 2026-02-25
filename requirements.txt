@@ -1,0 +1,23 @@
+# requirements.txt
+# Watery Traders - 同花顺自动化交易API
+# Python 3.12 环境
+
+# 核心依赖
+uiautomator2>=3.0.0
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+pillow>=10.0.0
+requests>=2.31.0
+python-multipart>=0.0.6
+
+# 可选工具
+pytest>=7.4.0          # 测试框架
+python-dotenv>=1.0.0   # 环境变量管理
+loguru>=0.7.2          # 更好的日志
+httpx>=0.25.0          # 异步HTTP客户端
+
+# 开发环境依赖（可选）
+black>=23.0.0          # 代码格式化
+isort>=5.12.0          # import排序
+flake8>=6.1.0          # 代码检查
+mypy>=1.5.0            # 类型检查
