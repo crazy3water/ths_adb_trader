@@ -5,8 +5,8 @@ from fastapi.middleware.cors import CORSMiddleware
 import base64
 import logging
 from datetime import datetime
-from trader import ThsTrader
-from config import config
+from .trader import ThsTrader
+from .config import config
 import uvicorn
 from typing import Optional
 
