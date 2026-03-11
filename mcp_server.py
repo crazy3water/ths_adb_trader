@@ -202,6 +202,24 @@ def get_tools() -> List[Dict[str, Any]]:
                 "properties": {"times": {"type": "integer", "description": "返回次数", "default": 1}},
                 "required": []
             }
+        },
+        {
+            "name": "dump_ui",
+            "description": "导出当前页面的UI结构（XML格式），帮助AI理解界面元素",
+            "inputSchema": {
+                "type": "object",
+                "properties": {},
+                "required": []
+            }
+        },
+        {
+            "name": "find_buttons",
+            "description": "查找当前页面所有可点击的按钮，返回按钮文字和位置",
+            "inputSchema": {
+                "type": "object",
+                "properties": {},
+                "required": []
+            }
         }
     ]
 
@@ -257,6 +275,12 @@ async def call_tool(request: Dict[str, Any]):
             result = {"success": True, "info": {"model": info.get('model'), "android": info.get('version')}}
         elif tool_name == "back":
             result = {"success": trader.back(arguments.get("times", 1)), "times": arguments.get("times", 1)}
+        elif tool_name == "dump_ui":
+            xml_content = trader.dump_ui()
+            result = {"success": True, "xml": xml_content}
+        elif tool_name == "find_buttons":
+            buttons = trader.find_buttons()
+            result = {"success": True, "count": len(buttons), "buttons": buttons}
         else:
             raise HTTPException(status_code=400, detail=f"未知工具: {tool_name}")
         
