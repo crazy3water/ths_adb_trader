@@ -10,6 +10,9 @@ pillow>=10.0.0
 requests>=2.31.0
 python-multipart>=0.0.6
 
+# MCP 支持 (可选)
+sse-starlette>=2.0.0
+
 # 可选工具
 pytest>=7.4.0          # 测试框架
 python-dotenv>=1.0.0   # 环境变量管理

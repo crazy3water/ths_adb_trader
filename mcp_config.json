@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "watery-traders": {
+      "command": "python",
+      "args": ["${workspace}/mcp_server.py"],
+      "description": "同花顺自动化交易系统 - 通过手机控制同花顺进行买卖交易"
+    }
+  }
+}
