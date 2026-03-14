@@ -231,7 +231,7 @@ async def get_position_detail(
 @app.post("/ths/buy")
 async def buy_stock(
         code: str = Query(..., description="股票代码"),
-        price: Optional[str] = Query(..., description="买入价格"),
+        price: Optional[str] = Query(None, description="买入价格"),
         quantity: str = Query(..., description="买入数量"),
         mode: Optional[str] = Query(None, description="交易模式: simulate或real，不填使用当前模式")
 ):
@@ -248,7 +248,7 @@ async def buy_stock(
 @app.post("/ths/sell")
 async def sell_stock(
         code: str = Query(..., description="股票代码"),
-        price: str = Query(..., description="卖出价格"),
+        price: Optional[str] = Query(None, description="卖出价格"),
         quantity: str = Query(..., description="卖出数量"),
         mode: Optional[str] = Query(None, description="交易模式: simulate或real，不填使用当前模式")
 ):
