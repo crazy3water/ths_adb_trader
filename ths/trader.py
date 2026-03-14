@@ -37,6 +37,7 @@ class ThsTrader:
         self.d = None
         self.package = config.THS_PACKAGE
         self.trade_mode: TradeMode = "simulate"  # "simulate" 或 "real"
+        self.save_screenshot: bool = False
         self.connect()
 
     @timer
@@ -65,6 +66,9 @@ class ThsTrader:
     @timer
     def screenshot(self, name: str = None) -> str:
         """截图"""
+        if not self.save_screenshot:
+            return ""
+
         if name is None:
             name = f"ths_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
 
@@ -74,7 +78,26 @@ class ThsTrader:
         return str(path)
 
     # ==================== 基本操作 ====================
+    @timer
+    def click_button_by_text(self, text: str, timeout: int = None, instance: int = 0) -> bool:
+        """通过文字点击按钮"""
+        timeout = timeout or config.DEFAULT_TIMEOUT
+        logger.info(f"点击按钮: {text}")
 
+        # 自动匹配所有按钮 + 文字
+        elem = self.d(className="android.widget.Button", text=text, instance=instance)
+        if elem.wait(timeout=timeout):
+            elem.click()
+            return True
+
+        # 如果Button没找到，自动重试TextView（兼容弹窗）
+        elem = self.d(className="android.widget.TextView", text=text, instance=instance)
+        if elem.wait(timeout=timeout):
+            elem.click()
+            return True
+
+        logger.warning(f"未找到按钮: {text}")
+        return False
     @timer
     def click_by_text(self, text: str, timeout: int = None, instance: int = 0) -> bool:
         """通过文字点击"""
@@ -201,11 +224,13 @@ class ThsTrader:
         trade_buttons = ["买入", "卖出", "持仓", "撤单", "查询"]
 
         if self.trade_mode == "simulate":
-            trade_buttons = trade_buttons + ["模拟练习区"]
+            trade_buttons = ["模拟练习区"] + trade_buttons
         
         for btn in trade_buttons:
             if not self.d(text=btn).exists:
+                logger.warning(f"未在交易页面下，因为缺少按钮: {btn}")
                 isInMain = False
+                break
 
         return isInMain
 
@@ -213,6 +238,11 @@ class ThsTrader:
     def back_from_buy(self) -> bool:
         """从买入页面返回交易主页面"""
         logger.info("从买入页面返回")
+
+        # 尝试点击返回按钮
+        if self.click_by_text("确定", timeout=2):
+            self.wait(1)
+            return True
 
         # 尝试点击返回按钮
         if self.click_by_text("返回", timeout=2):
@@ -223,7 +253,7 @@ class ThsTrader:
         if self.click_by_text("取消", timeout=2):
             self.wait(1)
             return True
-
+        self.wait(1)
         # 最后使用系统返回
         return self.back()
 
@@ -282,6 +312,7 @@ class ThsTrader:
         # 尝试点击底部交易按钮
         if self.click_by_text("交易", timeout=5):
             self.wait(2)
+            self.go_to_trade_main()
             return True
 
         # 尝试通过描述
@@ -290,6 +321,26 @@ class ThsTrader:
             return True
 
         return False
+
+    def go_to_trade_main(self) -> bool:
+        """进入交易主页面"""
+        # 尝试点击底部交易按钮
+        is_click_trade = False
+        if self.click_by_text("交易", timeout=5):
+            is_click_trade = True
+            self.wait(2)
+
+        # 尝试通过描述
+        if is_click_trade is False and self.click_by_desc("交易", timeout=5):
+            self.wait(2)
+
+        if self.trade_mode == "simulate":
+            # 进入模拟交易
+            self.click_by_text("模拟", timeout=2)
+        else:
+            logger.info("默认实盘交易已经登录")
+
+        return True
 
     @timer
     def set_trade_mode(self, mode: str = "simulate") -> bool:
@@ -327,6 +378,10 @@ class ThsTrader:
         logger.warning(f"无法切换到{mode}模式")
         return False
 
+    def is_login_stock(self) -> bool:
+        """判断是否已登录A股"""
+        return self._is_trade_main_page()
+
     # ==================== 账户信息 ====================
 
     @timer
@@ -347,53 +402,86 @@ class ThsTrader:
         }
 
         try:
+            logger.info(f"当前交易模式: {self.trade_mode}")
+
             # 确保在交易页面
             if not self.go_to_trade():
                 raise Exception("无法进入交易页面")
 
-            self.wait(2)
+            # self.wait(2)
+            if self.trade_mode == "real" and not self.is_login_stock():
+                raise Exception("真实交易未登录A股证券账号")
 
             # 截图保存现场
             result["screenshot"] = self.screenshot("account_summary.png")
 
+            # 等待本地网络加载
+            self.wait(2)
+
             # 获取所有文本
-            all_texts = []
-            for tv in self.d(className="android.widget.TextView"):
-                if tv.exists:
-                    text = tv.get_text()
-                    if text:
-                        all_texts.append(text)
-
-            result["raw_data"]["all_texts"] = all_texts[:30]
-
-            # 解析各类资产信息
-            for i, text in enumerate(all_texts):
-                # 总资产
-                if "总资产" in text and i + 1 < len(all_texts):
-                    result["total_asset"] = all_texts[i + 1]
-
-                # 浮动盈亏
-                if "浮动盈亏" in text and i + 1 < len(all_texts):
-                    result["float_profit"] = all_texts[i + 1]
-
-                # 总市值
-                if "总市值" in text and i + 1 < len(all_texts) and self.trade_mode == "real":
-                    result["total_market_value"] = all_texts[i + 1]
-                elif "总市值" in text and i + 1 < len(all_texts) and self.trade_mode == "simulate":
-                    result["total_market_value"] = all_texts[i + 2]
-
-                # 当日盈亏
-                if "当日参考盈亏" in text and i + 1 < len(all_texts):
-                    result["daily_profit"] = all_texts[i + 1]
-
-            result["success"] = True
-            logger.info(f"账户概览获取成功")
+            result = self.get_account_summary_result()
+            if "total_asset" not in result.keys():
+                self.wait(2)
+                result = self.get_account_summary_result()
 
         except Exception as e:
             logger.error(f"获取账户概览失败: {e}")
             result["error"] = str(e)
             result["screenshot"] = self.screenshot("account_error.png")
 
+        return result
+
+    def get_account_summary_result(self) -> Dict[str, Any]:
+        # 获取所有文本
+        result = {
+            "success": False,
+            "mode": self.trade_mode,
+            "raw_data": {}
+        }
+        all_texts = []
+        # 先拿到数量，再精准遍历，不浪费时间
+        # 先拿到控件总数（关键！不卡、不等）
+        count = self.d(className="android.widget.TextView").count
+
+        # 根据数量精准遍历，0 等待
+        for i in range(count):
+            try:
+                tv = self.d(className="android.widget.TextView", instance=i)
+                if tv.exists:  # 瞬间判断，不等待20秒
+                    t = tv.get_text()
+                    if t and t.strip():
+                        all_texts.append(t.strip())
+            except Exception as e:
+                logger.error(f"获取文本失败: {e}")
+        logger.warning(f"所有元素文本: {all_texts}")
+        if len(all_texts) <= 30:
+            logger.warning("可能是网络问题未找到任何文本信息，等待2秒后重试")
+            return result
+
+        result["raw_data"]["all_texts"] = all_texts[:30]
+
+        # 解析各类资产信息
+        for i, text in enumerate(all_texts):
+            # 总资产
+            if "总资产" in text and i + 1 < len(all_texts):
+                result["total_asset"] = all_texts[i + 1]
+
+            # 浮动盈亏
+            if "浮动盈亏" in text and i + 1 < len(all_texts):
+                result["float_profit"] = all_texts[i + 1]
+
+            # 总市值
+            if "总市值" in text and i + 1 < len(all_texts) and self.trade_mode == "real":
+                result["total_market_value"] = all_texts[i + 1]
+            elif "总市值" in text and i + 1 < len(all_texts) and self.trade_mode == "simulate":
+                result["total_market_value"] = all_texts[i + 2]
+
+            # 当日盈亏
+            if "当日参考盈亏" in text and i + 1 < len(all_texts):
+                result["daily_profit"] = all_texts[i + 1]
+
+        result["success"] = True
+        logger.info(f"账户概览获取成功")
         return result
 
     # ==================== 持仓管理 ====================
@@ -568,6 +656,62 @@ class ThsTrader:
                 info["profit_ratio"] = texts[i + 1]
 
         return info
+    @timer
+    def get_all_texts(self):
+        all_texts = []
+        # 先拿到数量，再精准遍历，不浪费时间
+        # 先拿到控件总数（关键！不卡、不等）
+        count = self.d(className="android.widget.TextView").count
+
+        # 根据数量精准遍历，0 等待
+        for i in range(count):
+            try:
+                tv = self.d(className="android.widget.TextView", instance=i)
+                if tv.exists:  # 瞬间判断，不等待20秒
+                    t = tv.get_text()
+                    if t and t.strip():
+                        all_texts.append(t.strip())
+            except Exception as e:
+                logger.error(f"获取文本失败: {e}")
+        logger.warning(f"所有元素文本: {all_texts}")
+        return all_texts
+
+    def click_search_stock(self, num):
+        self.wait(2)
+        logger.info(f"点击搜索结果中的第{num}个股票")
+
+        all_texts = []
+        # 先拿到数量，再精准遍历，不浪费时间
+        # 先拿到控件总数（关键！不卡、不等）
+        count = self.d(className="android.widget.TextView").count
+
+        # 根据数量精准遍历，0 等待
+        for i in range(count):
+            try:
+                tv = self.d(className="android.widget.TextView", instance=i)
+                if tv.exists:  # 瞬间判断，不等待20秒
+                    t = tv.get_text()
+                    if t and t.strip():
+                        all_texts.append(t.strip())
+            except Exception as e:
+                logger.error(f"获取文本失败: {e}")
+        logger.warning(f"所有元素文本: {all_texts}")
+
+        for i, text in enumerate(all_texts):
+            # 搜索结果
+            if "搜索结果" in text and i + num - 1 + 1 < len(all_texts):
+                self.click_by_text(all_texts[i + 1]) 
+
+        # list_view = self.d(className="android.widget.ListView")
+        # if list_view.exists:
+        #     items = list_view.child()
+        #     if len(items) > num:
+        #         items[num].click()
+        #         self.wait(1)
+        #     else:
+        #         raise Exception(f"没有第{num + 1}个股票")
+        # else:
+        #     raise Exception("没有搜索结果")
 
     # ==================== 交易操作 ====================
 
@@ -592,6 +736,8 @@ class ThsTrader:
         }
 
         try:
+
+
             # 1. 进入交易页面
             result["steps"].append("进入交易页面")
             if not self.go_to_trade():
@@ -603,14 +749,25 @@ class ThsTrader:
                 self.click_by_xpath('//*[@text="买入"]')
             self.wait(1)
 
+            self.get_all_texts()
+
+            # 2.1 点击输入代码框
+            result["steps"].append("股票代码/简拼")
+            if not self.click_by_text("股票代码/简拼", timeout=5):
+                self.click_by_xpath('//*[@text="股票代码/简拼"]')
+            self.wait(1)
+
             # 3. 输入代码
-            result["steps"].append("输入代码")
+            result["steps"].append("股票代码/简拼")
             self.input_text(code, 0)
             self.wait(1)
+            # 3.1 选择第一个匹配的股票
+            self.click_search_stock(1)
 
             # 4. 输入价格
             result["steps"].append("输入价格")
-            self.input_text(price, 1)
+            if price is not "" and price is not None:
+                self.input_text(price, 1)
 
             # 5. 输入数量
             result["steps"].append("输入数量")
@@ -618,8 +775,18 @@ class ThsTrader:
 
             # 6. 确认
             result["steps"].append("确认买入")
-            if self.click_by_text("买入", timeout=3, instance=1) or self.click_by_text("确定", timeout=3):
-                result["success"] = True
+            if self.trade_mode == "simulate":
+                if self.click_by_text("买 入(模拟炒股)", timeout=3):
+                    self.wait(2)
+                    self.get_all_texts()
+                    self.click_button_by_text("确认买入")
+                    result["success"] = True
+            else:
+                if self.click_by_text("买 入", timeout=3) or self.click_by_text("确定", timeout=3):
+                    self.wait(2)
+                    if not self.click_by_text("确认买入", timeout=3):
+                        self.click_by_desc("确认买入", timeout=3)
+                    result["success"] = True
 
             # 7. 截图
             self.wait(1)
@@ -665,13 +832,28 @@ class ThsTrader:
                 self.click_by_xpath('//*[@text="卖出"]')
             self.wait(1)
 
+            # 2.1 点击输入代码框
+            result["steps"].append("股票代码/简拼")
+            if not self.click_by_text("股票代码/简拼", timeout=5):
+                self.click_by_xpath('//*[@text="股票代码/简拼"]')
+            self.wait(1)
+
+            # 3. 输入代码
+            result["steps"].append("股票代码/简拼")
+            self.input_text(code, 0)
+            self.wait(1)
+            # 3.1 选择第一个匹配的股票
+            self.click_search_stock(1)
+
             # 3. 输入代码
             result["steps"].append("输入代码")
             self.input_text(code, 0)
 
             # 4. 输入价格
             result["steps"].append("输入价格")
-            self.input_text(price, 1)
+            if price is not "" and price is not None:
+                self.input_text(price, 1)
+
 
             # 5. 输入数量
             result["steps"].append("输入数量")
@@ -679,9 +861,18 @@ class ThsTrader:
 
             # 6. 确认
             result["steps"].append("确认卖出")
-            if self.click_by_text("卖出", timeout=3, instance=1) or self.click_by_text("确定", timeout=3):
-                result["success"] = True
-
+            if self.trade_mode == "simulate":
+                if self.click_by_text("卖 出(模拟炒股)", timeout=3):
+                    self.wait(2)
+                    self.get_all_texts()
+                    self.click_button_by_text("确认卖出")
+                    result["success"] = True
+            else:
+                if self.click_by_text("卖 出", timeout=3):
+                    self.wait(2)
+                    if not self.click_by_text("确认卖出", timeout=3):
+                        self.click_by_desc("确认卖出", timeout=3)
+                    result["success"] = True
             # 7. 截图
             self.wait(1)
             result["screenshot"] = self.screenshot(f"sell_{code}.png")
