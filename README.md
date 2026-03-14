@@ -1,9 +1,9 @@
 # Watery Traders - 同花顺自动化交易系统
 
-[![GitHub Stars](https://img.shields.io/github/stars/yourusername/watery-traders.svg?style=social&label=Star)](https://github.com/yourusername/watery-traders)
-[![GitHub Forks](https://img.shields.io/github/forks/yourusername/watery-traders.svg?style=social&label=Fork)](https://github.com/yourusername/watery-traders)
-[![GitHub Issues](https://img.shields.io/github/issues/yourusername/watery-traders)](https://github.com/yourusername/watery-traders/issues)
-[![GitHub License](https://img.shields.io/github/license/yourusername/watery-traders)](https://github.com/yourusername/watery-traders/blob/main/LICENSE)
+[![GitHub Stars](https://img.shields.io/github/stars/crazy3water/ths_adb_trader.svg?style=social&label=Star)](https://github.com/crazy3water/ths_adb_trader.git)
+[![GitHub Forks](https://img.shields.io/github/forks/crazy3water/ths_adb_trader.svg?style=social&label=Fork)](https://github.com/crazy3water/ths_adb_trader.git)
+[![GitHub Issues](https://img.shields.io/github/issues/crazy3water/ths_adb_trader)](https://github.com/crazy3water/ths_adb_trader/issues)
+[![GitHub License](https://img.shields.io/github/license/crazy3water/ths_adb_trader)](https://github.com/crazy3water/ths_adb_trader/blob/main/LICENSE)
 [![Python Version](https://img.shields.io/badge/python-3.12%2B-blue)](https://www.python.org/)
 
 [English](./README_EN.md) | 中文
@@ -43,7 +43,7 @@ Watery Traders 是一个通过 uiautomator2 控制安卓手机上的同花顺APP
 ### 1. 克隆项目
 
 ```bash
-git clone https://github.com/yourusername/watery-traders.git
+git clone https://github.com/crazy3water/ths_adb_trader.git
 cd watery-traders
 ```
 
@@ -396,7 +396,7 @@ A: 可以通过以下方式查看：
 
 如有问题或建议，欢迎通过以下方式联系：
 
-- GitHub Issues：[提交问题](https://github.com/yourusername/watery-traders/issues)
+- GitHub Issues：[提交问题](https://github.com/crazy3water/ths_adb_trader/issues)
 - Email：your.email@example.com
 
 ## 致谢
