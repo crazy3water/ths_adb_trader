@@ -5,7 +5,7 @@ import logging
 import re
 from datetime import datetime
 from typing import Dict, Any, List, Optional
-from config import config
+from ths.config import config
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)

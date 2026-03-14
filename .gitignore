@@ -34,6 +34,7 @@ ENV/
 # 项目特定
 screenshots/*.png
 screenshots/*.jpg
+ths/screenshots/*  
 logs/*.log
 *.log
 

@@ -8,7 +8,7 @@ BASE_DIR = Path(__file__).parent
 
 class Config:
     # 设备配置
-    DEVICE_SERIAL = "192.168.3.6:5555"  # 修改为你的手机IP
+    DEVICE_SERIAL = "SM02G4061994156"  # 当前连接的手机
 
     # 同花顺配置
     THS_PACKAGE = "com.hexin.plat.android"
