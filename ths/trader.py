@@ -4,21 +4,42 @@ import time
 import logging
 import re
 from datetime import datetime
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Callable, Literal
+from functools import wraps
 from ths.config import config
+
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
+# 耗时测量装饰器
+def timer(func: Callable) -> Callable:
+    """
+    装饰器，用于测量方法执行的耗时（秒级，有小数点）
+    """
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        start_time = time.time()
+        try:
+            result = func(*args, **kwargs)
+            return result
+        finally:
+            end_time = time.time()
+            elapsed = end_time - start_time
+            logger.info(f"⌛ 方法 {func.__name__} 执行耗时: {elapsed:.3f} 秒")
+    return wrapper
+
+TradeMode = Literal["simulate", "real"]
 
 class ThsTrader:
     def __init__(self):
         self.device_serial = config.DEVICE_SERIAL
         self.d = None
         self.package = config.THS_PACKAGE
-        self.trade_mode = "simulate"  # "simulate" 或 "real"
+        self.trade_mode: TradeMode = "simulate"  # "simulate" 或 "real"
         self.connect()
 
+    @timer
     def connect(self):
         """连接设备"""
         try:
@@ -36,10 +57,12 @@ class ThsTrader:
             logger.error(f"❌ 连接失败: {e}")
             raise
 
+    @timer
     def wait(self, seconds: float = None):
         """等待"""
         time.sleep(seconds or config.PAGE_LOAD_TIMEOUT)
 
+    @timer
     def screenshot(self, name: str = None) -> str:
         """截图"""
         if name is None:
@@ -52,6 +75,7 @@ class ThsTrader:
 
     # ==================== 基本操作 ====================
 
+    @timer
     def click_by_text(self, text: str, timeout: int = None, instance: int = 0) -> bool:
         """通过文字点击"""
         timeout = timeout or config.DEFAULT_TIMEOUT
@@ -65,6 +89,7 @@ class ThsTrader:
         logger.warning(f"未找到: {text}")
         return False
 
+    @timer
     def click_by_desc(self, desc: str, timeout: int = None) -> bool:
         """通过描述点击"""
         timeout = timeout or config.DEFAULT_TIMEOUT
@@ -74,6 +99,7 @@ class ThsTrader:
             return True
         return False
 
+    @timer
     def click_by_xpath(self, xpath: str) -> bool:
         """通过XPath点击"""
         try:
@@ -82,6 +108,7 @@ class ThsTrader:
         except:
             return False
 
+    @timer
     def input_text(self, text: str, instance: int = 0) -> bool:
         """输入文本"""
         edit = self.d(className="android.widget.EditText", instance=instance)
@@ -92,6 +119,7 @@ class ThsTrader:
             return True
         return False
 
+    @timer
     def get_text(self, instance: int = 0, className: str = "android.widget.TextView") -> str:
         """获取文本"""
         elem = self.d(className=className, instance=instance)
@@ -101,6 +129,7 @@ class ThsTrader:
 
     # ==================== 后退导航功能 ====================
 
+    @timer
     def back(self, times: int = 1) -> bool:
         """
         后退操作
@@ -113,6 +142,7 @@ class ThsTrader:
 
         return True
 
+    @timer
     def back_to_home(self, max_back: int = 10) -> bool:
         """
         一直后退直到回到首页
@@ -133,6 +163,7 @@ class ThsTrader:
         logger.warning(f"后退{max_back}次后仍未到达首页")
         return False
 
+    @timer
     def _is_home_page(self) -> bool:
         """判断是否在同花顺首页"""
         # 检查首页特有的元素（底部导航栏）
@@ -144,6 +175,7 @@ class ThsTrader:
 
         return False
 
+    @timer
     def back_to_trade_main(self) -> bool:
         """
         返回到交易主页面（买入/卖出/持仓/撤单等选项页）
@@ -162,17 +194,22 @@ class ThsTrader:
         logger.warning("未能返回交易主页面")
         return False
 
+    @timer
     def _is_trade_main_page(self) -> bool:
         """判断是否在交易主页面"""
+        isInMain = True
         trade_buttons = ["买入", "卖出", "持仓", "撤单", "查询"]
 
-        found_count = 0
+        if self.trade_mode == "simulate":
+            trade_buttons = trade_buttons + ["模拟练习区"]
+        
         for btn in trade_buttons:
-            if self.d(text=btn).exists:
-                found_count += 1
+            if not self.d(text=btn).exists:
+                isInMain = False
 
-        return found_count >= 3
+        return isInMain
 
+    @timer
     def back_from_buy(self) -> bool:
         """从买入页面返回交易主页面"""
         logger.info("从买入页面返回")
@@ -190,15 +227,18 @@ class ThsTrader:
         # 最后使用系统返回
         return self.back()
 
+    @timer
     def back_from_sell(self) -> bool:
         """从卖出页面返回交易主页面"""
         return self.back_from_buy()  # 逻辑相同
 
+    @timer
     def back_from_position_detail(self) -> bool:
         """从持仓详情页返回持仓列表"""
         logger.info("从持仓详情页返回")
         return self.back()
 
+    @timer
     def back_to_trade_from_positions(self) -> bool:
         """从持仓列表返回交易主页面"""
         logger.info("从持仓列表返回交易主页面")
@@ -206,6 +246,7 @@ class ThsTrader:
 
     # ==================== 应用控制 ====================
 
+    @timer
     def open_app(self) -> Dict[str, Any]:
         """打开同花顺"""
         logger.info("打开同花顺")
@@ -213,12 +254,14 @@ class ThsTrader:
         self.wait(3)
         return {"success": True, "message": "应用已启动"}
 
+    @timer
     def close_app(self) -> Dict[str, Any]:
         """关闭同花顺"""
         logger.info("关闭同花顺")
         self.d.app_stop(self.package)
         return {"success": True, "message": "应用已关闭"}
 
+    @timer
     def restart_app(self) -> Dict[str, Any]:
         """重启同花顺"""
         logger.info("重启同花顺")
@@ -228,6 +271,7 @@ class ThsTrader:
 
     # ==================== 交易导航 ====================
 
+    @timer
     def go_to_trade(self) -> bool:
         """进入交易页面"""
         # 先检查是否已经在交易页面
@@ -247,6 +291,7 @@ class ThsTrader:
 
         return False
 
+    @timer
     def set_trade_mode(self, mode: str = "simulate") -> bool:
         """
         设置交易模式
@@ -284,6 +329,7 @@ class ThsTrader:
 
     # ==================== 账户信息 ====================
 
+    @timer
     def get_account_summary(self) -> Dict[str, Any]:
         """
         获取账户概览信息
@@ -352,6 +398,7 @@ class ThsTrader:
 
     # ==================== 持仓管理 ====================
 
+    @timer
     def go_to_positions(self) -> bool:
         """进入持仓页面"""
         if not self.go_to_trade():
@@ -367,6 +414,7 @@ class ThsTrader:
 
         return False
 
+    @timer
     def get_positions(self) -> Dict[str, Any]:
         """
         获取持仓信息
@@ -443,6 +491,7 @@ class ThsTrader:
 
         return result
 
+    @timer
     def get_position_detail(self, index: int = 0) -> Dict[str, Any]:
         """
         获取单个持仓的详细信息
@@ -488,6 +537,7 @@ class ThsTrader:
 
         return result
 
+    @timer
     def _parse_position_detail(self) -> Dict[str, Any]:
         """解析持仓详情页信息"""
         info = {}
@@ -521,6 +571,7 @@ class ThsTrader:
 
     # ==================== 交易操作 ====================
 
+    @timer
     def buy(self, code: str, price: str, quantity: str, mode: str = None) -> Dict[str, Any]:
         """
         买入股票
@@ -585,6 +636,7 @@ class ThsTrader:
 
         return result
 
+    @timer
     def sell(self, code: str, price: str, quantity: str, mode: str = None) -> Dict[str, Any]:
         """卖出股票"""
         if mode:
@@ -646,6 +698,7 @@ class ThsTrader:
 
     # ==================== 委托管理 ====================
 
+    @timer
     def get_orders(self, order_type: str = "today") -> Dict[str, Any]:
         """
         获取委托记录
@@ -706,6 +759,7 @@ class ThsTrader:
 
         return result
 
+    @timer
     def cancel_order(self, order_index: int = 0) -> Dict[str, Any]:
         """
         撤单
@@ -765,6 +819,7 @@ class ThsTrader:
 
     # ==================== 调试工具 ====================
 
+    @timer
     def find_buttons(self) -> List[Dict[str, Any]]:
         """查找所有可点击按钮"""
         buttons = []
@@ -789,6 +844,7 @@ class ThsTrader:
 
         return buttons
 
+    @timer
     def dump_ui(self) -> str:
         """导出UI结构"""
         xml = self.d.dump_hierarchy()
@@ -797,6 +853,7 @@ class ThsTrader:
             f.write(xml)
         return str(path)
 
+    @timer
     def get_current_activity(self) -> str:
         """获取当前Activity"""
         try:
