@@ -1,16 +1,9 @@
 # Watery Traders - 同花顺自动化交易系统
 
-<<<<<<< HEAD
-[![GitHub Stars](https://img.shields.io/github/stars/yourusername/watery-traders.svg?style=social&label=Star)](https://github.com/crazy3watery/ths_adb_trader)
-[![GitHub Forks](https://img.shields.io/github/forks/yourusername/watery-traders.svg?style=social&label=Fork)](https://github.com/crazy3watery/ths_adb_trader)
-[![GitHub Issues](https://img.shields.io/github/issues/yourusername/watery-traders)](https://github.com/crazy3watery/ths_adb_trader/issues)
-[![GitHub License](https://img.shields.io/github/license/yourusername/watery-traders)](https://github.com/crazy3water/ths_adb_trader/blob/main/LICENSE)
-=======
 [![GitHub Stars](https://img.shields.io/github/stars/crazy3water/ths_adb_trader.svg?style=social&label=Star)](https://github.com/crazy3water/ths_adb_trader.git)
 [![GitHub Forks](https://img.shields.io/github/forks/crazy3water/ths_adb_trader.svg?style=social&label=Fork)](https://github.com/crazy3water/ths_adb_trader.git)
 [![GitHub Issues](https://img.shields.io/github/issues/crazy3water/ths_adb_trader)](https://github.com/crazy3water/ths_adb_trader/issues)
 [![GitHub License](https://img.shields.io/github/license/crazy3water/ths_adb_trader)](https://github.com/crazy3water/ths_adb_trader/blob/main/LICENSE)
->>>>>>> bada62a (调整readme)
 [![Python Version](https://img.shields.io/badge/python-3.12%2B-blue)](https://www.python.org/)
 
 [English](./README_EN.md) | 中文
